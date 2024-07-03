@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Usage: v 'message@id' pubkey
+# Usage: ./v.sh 'message@id' pubkey
 
 # Usenet server details
 server="news.mixmin.net"
