@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Usage: v 'message@id' pubkey
+
 # Usenet server details
 server="news.mixmin.net"
 port=119
