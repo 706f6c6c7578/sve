@@ -16,7 +16,7 @@ if [[ $msgid != \<*\> ]]; then
 fi
 
 # Use netcat to connect to the server and get the article
-printf '%s\r\n' "article $msgid" quit . | nc $server $port\
+printf '%s\r\n' "article $msgid" quit | nc $server $port\
 | sed -e :a -e '$d;N;2,2ba' -e 'P;D' | sve v $pubkey
 
 
