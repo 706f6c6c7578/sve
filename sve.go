@@ -17,7 +17,7 @@ func main() {
 	commandIndex := 1
 
 	if len(os.Args) < 2 {
-		fmt.Println("Usage: sve <gk|s|v> <key file> < message")
+		fmt.Println("Usage: sve <gk|s|v> <key file> < infile [> outfile]")
 		return
 	}
 
@@ -50,7 +50,7 @@ func main() {
 
 	case "s":
 		if len(os.Args) < commandIndex+2 {
-			fmt.Println("Usage: sve s <private key file> < message")
+			fmt.Println("Usage: sve s <private key file> < infile > outfile")
 			return
 		}
 
@@ -100,32 +100,26 @@ func main() {
 		fmt.Print(string(messageWithHeader))
 
 	case "v":
-		if len(os.Args) < commandIndex+2 {
-			fmt.Println("Usage: sve v <public key file> < message")
-			return
-		}
+		stat, _ := os.Stdin.Stat()
+    		if (stat.Mode() & os.ModeCharDevice) != 0 {
+        	    fmt.Println("Usage: sve v < message")
+                    return
+    		}
 
-		keyFile := os.Args[commandIndex+1]
+    		messageWithHeader, err := ioutil.ReadAll(os.Stdin)
+    		if err != nil {
+        	    log.Fatalf("Failed to read the message with signature from stdin: %v", err)
+    		}
 
-		publicKeyBytes, err := ioutil.ReadFile(keyFile)
-		if err != nil {
-			log.Fatalf("Failed to read public key file: %v", err)
-		}
-
-		publicKey, err := hex.DecodeString(string(publicKeyBytes))
-		if err != nil {
-			log.Fatalf("Failed to decode public key: %v", err)
-		}
-
-		messageWithHeader, err := ioutil.ReadAll(os.Stdin)
-		if err != nil {
-			log.Fatalf("Failed to read the message with signature from stdin: %v", err)
-		}
+    		if len(messageWithHeader) == 0 {
+        	    fmt.Println("Error: Empty input. Please provide a message to verify.")
+        	    return
+    		}
 
 		// If present, remove the extra CRLF at the end of the message
 		for strings.HasSuffix(string(messageWithHeader), "\r\n\r\n") {
 			messageWithHeader = []byte(strings.TrimSuffix(string(messageWithHeader), "\r\n"))
-	 	}
+		}
 
 		// Split the headers from the body
 		parts := strings.SplitN(string(messageWithHeader), "\r\n\r\n", 2)
@@ -136,7 +130,19 @@ func main() {
 		headers := parts[0]
 		messageBody := parts[1]
 
-		// Collect header values
+		// Extract public key from headers
+		publicKeyHex := extractPublicKey(headers)
+
+		if publicKeyHex == "" {
+			log.Fatalf("Invalid message format: missing public key header")
+		}
+
+		publicKey, err := hex.DecodeString(publicKeyHex)
+		if err != nil {
+			log.Fatalf("Failed to decode public key: %v", err)
+		}
+
+		// Extract signature (this part remains unchanged)
 		var signatureHex string
 		lines := strings.Split(headers, "\r\n")
 		for i, line := range lines {
@@ -196,5 +202,15 @@ func appendHeaderValues(message []byte) []byte {
 	}
 
 	return []byte(strings.Join(headerValues, "\r\n") + "\r\n" + messageBody)
+}
+
+func extractPublicKey(headers string) string {
+	lines := strings.Split(headers, "\r\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, edpubHeader) {
+			return strings.TrimPrefix(line, edpubHeader)
+		}
+	}
+	return ""
 }
 
