@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"encoding/hex"
 	"fmt"
@@ -75,13 +76,12 @@ func main() {
 			log.Fatalf("Failed to read the message from stdin: %v", err)
 		}
 
-		// Check if the CR character is already present
-		if strings.Contains(string(messageBytes), "\r\n") {
-    		   // If the CR character is already present, don't make any changes
-		} else {
-                  // If the CR character is not present, replace LF with CRLF
-    		messageBytes = []byte(strings.ReplaceAll(string(messageBytes), "\n", "\r\n"))
-		}
+		// Convert all line endings to LF
+		messageBytes = bytes.ReplaceAll(messageBytes, []byte("\r\n"), []byte("\n"))
+		messageBytes = bytes.ReplaceAll(messageBytes, []byte("\r"), []byte("\n"))
+
+		// Convert all LF to CRLF
+		messageBytes = bytes.ReplaceAll(messageBytes, []byte("\n"), []byte("\r\n"))
 
 		pubKeyHeader := edpubHeader + publicKeyHex + "\r\n\r\n"
 		messageWithPubKey := append([]byte(pubKeyHeader), messageBytes...)
